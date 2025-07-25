@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 
 interface KPI {
   id: number
@@ -19,16 +20,25 @@ interface KPI {
 interface DashboardData {
   valueMap: Record<string, number>
   kpiMeta: Record<string, KPI>
+  demandSupply: any[]
+  production: any[]
+  logistics: any[]
+  market: any[]
 }
 
-export function useDashboardData(section: string, timeRange: string): DashboardData {
+export function useDashboardData() {
   const [data, setData] = useState<DashboardData>({
     valueMap: {},
     kpiMeta: {},
+    demandSupply: [],
+    production: [],
+    logistics: [],
+    market: [],
   })
 
-  useEffect(() => {
-    const loadData = async () => {
+  const { data: queryData, error } = useQuery<DashboardData>({
+    queryKey: ["dashboard-data"],
+    queryFn: async () => {
       try {
         const response = await fetch("/data/kpis.json")
         const kpis: KPI[] = await response.json()
@@ -42,11 +52,18 @@ export function useDashboardData(section: string, timeRange: string): DashboardD
           kpiMeta[key] = kpi
         })
 
-        setData({ valueMap, kpiMeta })
+        return {
+          valueMap,
+          kpiMeta,
+          demandSupply: [],
+          production: [],
+          logistics: [],
+          market: [],
+        }
       } catch (error) {
         console.error("Failed to load dashboard data:", error)
         // Fallback data
-        setData({
+        return {
           valueMap: {
             orderfillrate: 96.0,
             stockoutinstancespersku: 12,
@@ -69,12 +86,20 @@ export function useDashboardData(section: string, timeRange: string): DashboardD
             dailydemandspikeresponsetime: 4.2,
           },
           kpiMeta: {},
-        })
+          demandSupply: [],
+          production: [],
+          logistics: [],
+          market: [],
+        }
       }
-    }
+    },
+  })
 
-    loadData()
-  }, [section, timeRange])
+  useEffect(() => {
+    if (queryData) {
+      setData(queryData)
+    }
+  }, [queryData])
 
   return data
 }
